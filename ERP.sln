@@ -1,0 +1,51 @@
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.0.31903.59
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ERP.Domain", "src\ERP.Domain\ERP.Domain.csproj", "{F7F557B8-89D2-4C11-A808-71F03B07B383}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ERP.Application", "src\ERP.Application\ERP.Application.csproj", "{7E009A32-91AA-4DA0-B3C6-E57D51E379E9}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ERP.Infrastructure", "src\ERP.Infrastructure\ERP.Infrastructure.csproj", "{4C09788A-0DC1-4F53-AE3A-77829A2F4AE5}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ERP.Api", "src\ERP.Api\ERP.Api.csproj", "{39756382-A2C3-4DCC-924C-F11792105B89}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ERP.UnitTests", "tests\ERP.UnitTests\ERP.UnitTests.csproj", "{10E04FD8-FB6F-490E-9F4E-EB72697200E3}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ERP.IntegrationTests", "tests\ERP.IntegrationTests\ERP.IntegrationTests.csproj", "{850B5220-31B5-4A57-95D0-16C4FA03FC4C}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{F7F557B8-89D2-4C11-A808-71F03B07B383}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{F7F557B8-89D2-4C11-A808-71F03B07B383}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{F7F557B8-89D2-4C11-A808-71F03B07B383}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{F7F557B8-89D2-4C11-A808-71F03B07B383}.Release|Any CPU.Build.0 = Release|Any CPU
+		{7E009A32-91AA-4DA0-B3C6-E57D51E379E9}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{7E009A32-91AA-4DA0-B3C6-E57D51E379E9}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{7E009A32-91AA-4DA0-B3C6-E57D51E379E9}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{7E009A32-91AA-4DA0-B3C6-E57D51E379E9}.Release|Any CPU.Build.0 = Release|Any CPU
+		{4C09788A-0DC1-4F53-AE3A-77829A2F4AE5}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{4C09788A-0DC1-4F53-AE3A-77829A2F4AE5}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{4C09788A-0DC1-4F53-AE3A-77829A2F4AE5}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{4C09788A-0DC1-4F53-AE3A-77829A2F4AE5}.Release|Any CPU.Build.0 = Release|Any CPU
+		{39756382-A2C3-4DCC-924C-F11792105B89}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{39756382-A2C3-4DCC-924C-F11792105B89}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{39756382-A2C3-4DCC-924C-F11792105B89}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{39756382-A2C3-4DCC-924C-F11792105B89}.Release|Any CPU.Build.0 = Release|Any CPU
+		{10E04FD8-FB6F-490E-9F4E-EB72697200E3}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{10E04FD8-FB6F-490E-9F4E-EB72697200E3}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{10E04FD8-FB6F-490E-9F4E-EB72697200E3}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{10E04FD8-FB6F-490E-9F4E-EB72697200E3}.Release|Any CPU.Build.0 = Release|Any CPU
+		{850B5220-31B5-4A57-95D0-16C4FA03FC4C}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{850B5220-31B5-4A57-95D0-16C4FA03FC4C}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{850B5220-31B5-4A57-95D0-16C4FA03FC4C}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{850B5220-31B5-4A57-95D0-16C4FA03FC4C}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+EndGlobal

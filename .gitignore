@@ -1,0 +1,15 @@
+bin/
+obj/
+.vs/
+.vscode/
+node_modules/
+dist/
+coverage/
+.angular/
+TestResults/
+*.user
+*.suo
+*.cache
+*.db
+*.local
+docker-data/
