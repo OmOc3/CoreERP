@@ -133,7 +133,7 @@ public sealed class BranchService : IBranchService
 
         _dbContext.Branches.Add(entity);
         await _dbContext.SaveChangesAsync(cancellationToken);
-        await _auditService.LogAsync(nameof(Branch), entity.Id.ToString(), "Create", null, entity, entity.Id, cancellationToken);
+        await _auditService.LogAsync(nameof(Branch), entity.Id.ToString(), "Create", null, entity, null, cancellationToken);
 
         return entity.Id;
     }
@@ -157,7 +157,7 @@ public sealed class BranchService : IBranchService
         entity.Update(code, request.Name, request.Address, request.Phone, request.Email, request.IsActive);
         entity.SetUpdateAudit(_clock.UtcNow, _currentUserService.User.UserName);
         await _dbContext.SaveChangesAsync(cancellationToken);
-        await _auditService.LogAsync(nameof(Branch), entity.Id.ToString(), "Update", before, entity, entity.Id, cancellationToken);
+        await _auditService.LogAsync(nameof(Branch), entity.Id.ToString(), "Update", before, entity, null, cancellationToken);
     }
 
     public async Task DeleteAsync(Guid id, CancellationToken cancellationToken)
@@ -169,6 +169,6 @@ public sealed class BranchService : IBranchService
 
         entity.SoftDelete(_clock.UtcNow, _currentUserService.User.UserName);
         await _dbContext.SaveChangesAsync(cancellationToken);
-        await _auditService.LogAsync(nameof(Branch), entity.Id.ToString(), "Delete", entity, null, entity.Id, cancellationToken);
+        await _auditService.LogAsync(nameof(Branch), entity.Id.ToString(), "Delete", entity, null, null, cancellationToken);
     }
 }

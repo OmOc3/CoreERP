@@ -252,11 +252,20 @@ public sealed class ReturnService : IReturnService
 
         foreach (var line in entity.Lines)
         {
+            var unitCost = await _dbContext.StockBalances
+                .Where(x => x.BranchId == entity.BranchId && x.ProductId == line.ProductId && !x.IsDeleted)
+                .Select(x => (decimal?)x.AverageCost)
+                .SingleOrDefaultAsync(cancellationToken)
+                ?? await _dbContext.Products
+                    .Where(x => x.Id == line.ProductId && !x.IsDeleted)
+                    .Select(x => x.StandardCost)
+                    .SingleAsync(cancellationToken);
+
             await _inventoryTransactionService.ReceiveAsync(
                 entity.BranchId,
                 line.ProductId,
                 line.Quantity,
-                line.UnitPrice,
+                unitCost,
                 InventoryMovementType.SalesReturn,
                 entity.Number,
                 nameof(ReturnDocument),

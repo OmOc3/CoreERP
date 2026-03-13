@@ -33,6 +33,20 @@ public sealed class PurchaseOrder : BranchScopedEntity, IAggregateRoot
     public decimal TotalAmount { get; private set; }
     public IReadOnlyCollection<PurchaseOrderLine> Lines => _lines;
 
+    public void UpdateHeader(Guid supplierId, Guid branchId, DateTime orderDateUtc, DateTime? expectedDateUtc, string? notes)
+    {
+        if (Status is not PurchaseOrderStatus.Draft and not PurchaseOrderStatus.Rejected)
+        {
+            throw new DomainRuleException("Only draft or rejected purchase orders can be edited.");
+        }
+
+        SupplierId = supplierId;
+        BranchId = branchId;
+        OrderDateUtc = orderDateUtc;
+        ExpectedDateUtc = expectedDateUtc;
+        Notes = notes?.Trim();
+    }
+
     public void ReplaceLines(IEnumerable<PurchaseOrderLine> lines)
     {
         if (Status is not PurchaseOrderStatus.Draft and not PurchaseOrderStatus.Rejected)

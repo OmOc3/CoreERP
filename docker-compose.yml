@@ -1,0 +1,40 @@
+services:
+  sqlserver:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    container_name: coreerp-sqlserver
+    environment:
+      ACCEPT_EULA: "Y"
+      SA_PASSWORD: "Your_password123"
+    ports:
+      - "1433:1433"
+    volumes:
+      - sqlserver-data:/var/opt/mssql
+
+  api:
+    build:
+      context: .
+      dockerfile: src/ERP.Api/Dockerfile
+    container_name: coreerp-api
+    depends_on:
+      - sqlserver
+    environment:
+      ASPNETCORE_ENVIRONMENT: "Development"
+      ASPNETCORE_URLS: "http://+:8080"
+      ConnectionStrings__DefaultConnection: "Server=sqlserver,1433;Database=ERPDb;User Id=sa;Password=Your_password123;TrustServerCertificate=True;Encrypt=False;MultipleActiveResultSets=True"
+      ERP__Cors__AllowedOrigins__0: "http://localhost:4200"
+      ERP__Cors__AllowedOrigins__1: "http://127.0.0.1:4200"
+    ports:
+      - "8080:8080"
+
+  frontend:
+    build:
+      context: src/erp-web
+      dockerfile: Dockerfile
+    container_name: coreerp-web
+    depends_on:
+      - api
+    ports:
+      - "4200:80"
+
+volumes:
+  sqlserver-data:

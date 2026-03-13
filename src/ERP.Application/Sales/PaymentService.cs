@@ -166,8 +166,8 @@ public sealed class PaymentService : IPaymentService
                 x.Amount,
                 x.Method,
                 x.ReferenceNumber,
-                x.Type == PaymentType.CustomerReceipt ? x.Customer!.Name : x.Supplier!.Name,
-                x.Type == PaymentType.CustomerReceipt ? x.SalesInvoice!.Number : x.PurchaseInvoice!.Number,
+                x.Type == PaymentType.CustomerReceipt ? x.Customer != null ? x.Customer.Name : null : x.Supplier != null ? x.Supplier.Name : null,
+                x.Type == PaymentType.CustomerReceipt ? x.SalesInvoice != null ? x.SalesInvoice.Number : null : x.PurchaseInvoice != null ? x.PurchaseInvoice.Number : null,
                 x.Status))
             .ToPagedResultAsync(request, cancellationToken);
     }

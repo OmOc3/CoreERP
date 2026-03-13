@@ -275,6 +275,7 @@ public sealed class SalesOrderService : ISalesOrderService
             ?? throw new NotFoundException("Sales order was not found.");
         var before = await GetAsync(id, cancellationToken);
 
+        entity.UpdateHeader(request.CustomerId, request.BranchId, request.OrderDateUtc, request.DueDateUtc, request.Notes);
         entity.ReplaceLines(request.Lines.Select(x =>
             new SalesOrderLine(x.ProductId, x.Quantity, x.UnitPrice, x.DiscountPercent, x.TaxPercent, x.Description)));
         entity.SetUpdateAudit(_clock.UtcNow, _currentUserService.User.UserName);

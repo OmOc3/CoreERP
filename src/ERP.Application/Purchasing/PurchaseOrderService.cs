@@ -275,6 +275,7 @@ public sealed class PurchaseOrderService : IPurchaseOrderService
             ?? throw new NotFoundException("Purchase order was not found.");
         var before = await GetAsync(id, cancellationToken);
 
+        entity.UpdateHeader(request.SupplierId, request.BranchId, request.OrderDateUtc, request.ExpectedDateUtc, request.Notes);
         entity.ReplaceLines(request.Lines.Select(x =>
             new PurchaseOrderLine(x.ProductId, x.Quantity, x.UnitPrice, x.DiscountPercent, x.TaxPercent, x.Description)));
         entity.SetUpdateAudit(_clock.UtcNow, _currentUserService.User.UserName);

@@ -1,4 +1,5 @@
 using ERP.Application.Approvals;
+using ERP.Application.Admin;
 using ERP.Application.Common.Contracts;
 using ERP.Application.Dashboard;
 using ERP.Application.Inventory;
@@ -25,12 +26,16 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IPurchaseOrderService, PurchaseOrderService>();
         services.AddScoped<ISalesOrderService, SalesOrderService>();
         services.AddScoped<IInvoiceService, InvoiceService>();
+        services.AddScoped<IInvoicePostingService, InvoicePostingService>();
         services.AddScoped<IPaymentService, PaymentService>();
         services.AddScoped<IReturnService, ReturnService>();
         services.AddScoped<IInventoryService, InventoryService>();
+        services.AddScoped<IInventoryTransactionService, InventoryService>();
         services.AddScoped<IApprovalService, ApprovalService>();
         services.AddScoped<IReportService, ReportService>();
         services.AddScoped<IDashboardService, DashboardService>();
+        services.AddScoped<IAlertService, AlertService>();
+        services.AddScoped<IAuditLogService, AuditLogService>();
 
         return services;
     }

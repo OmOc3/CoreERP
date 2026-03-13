@@ -24,6 +24,7 @@ public sealed class SalesInvoiceLine : BaseEntity
     }
 
     public Guid SalesInvoiceId { get; private set; }
+    public SalesInvoice? SalesInvoice { get; private set; }
     public Guid? SalesOrderLineId { get; private set; }
     public Guid ProductId { get; private set; }
     public Product? Product { get; private set; }
