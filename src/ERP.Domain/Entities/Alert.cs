@@ -21,6 +21,7 @@ public sealed class Alert : BranchScopedEntity, IAggregateRoot
     }
 
     public AlertType Type { get; private set; }
+    public Branch? Branch { get; private set; }
     public Guid? ProductId { get; private set; }
     public Product? Product { get; private set; }
     public string Title { get; private set; } = string.Empty;

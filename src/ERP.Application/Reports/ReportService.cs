@@ -223,7 +223,7 @@ public sealed class ReportService : IReportService
             .AsNoTracking()
             .Include(x => x.Branch)
             .Include(x => x.Customer)
-            .Where(x => !x.IsDeleted && x.OutstandingAmount > 0);
+            .Where(x => !x.IsDeleted && x.TotalAmount - x.PaidAmount - x.ReturnAmount > 0);
 
         query = ApplyBranchFilter(query, request.BranchId);
 
@@ -232,16 +232,20 @@ public sealed class ReportService : IReportService
             query = query.Where(x => x.CustomerId == request.CustomerId.Value);
         }
 
-        return await query
+        var items = await query
             .OrderBy(x => x.DueDateUtc)
             .Select(x => new ReceivableRowDto(
                 x.Branch!.Name,
                 x.Customer!.Name,
                 x.Number,
                 x.DueDateUtc,
-                x.OutstandingAmount,
-                EF.Functions.DateDiffDay(x.DueDateUtc, today)))
+                x.TotalAmount - x.PaidAmount - x.ReturnAmount,
+                0))
             .ToListAsync(cancellationToken);
+
+        return items
+            .Select(x => x with { DaysOverdue = (today - x.DueDateUtc.Date).Days })
+            .ToList();
     }
 
     public async Task<IReadOnlyCollection<PayableRowDto>> GetPayablesAsync(ReportFilterRequest request, CancellationToken cancellationToken)
@@ -253,7 +257,7 @@ public sealed class ReportService : IReportService
             .AsNoTracking()
             .Include(x => x.Branch)
             .Include(x => x.Supplier)
-            .Where(x => !x.IsDeleted && x.OutstandingAmount > 0);
+            .Where(x => !x.IsDeleted && x.TotalAmount - x.PaidAmount - x.ReturnAmount > 0);
 
         query = ApplyBranchFilter(query, request.BranchId);
 
@@ -262,16 +266,20 @@ public sealed class ReportService : IReportService
             query = query.Where(x => x.SupplierId == request.SupplierId.Value);
         }
 
-        return await query
+        var items = await query
             .OrderBy(x => x.DueDateUtc)
             .Select(x => new PayableRowDto(
                 x.Branch!.Name,
                 x.Supplier!.Name,
                 x.Number,
                 x.DueDateUtc,
-                x.OutstandingAmount,
-                EF.Functions.DateDiffDay(x.DueDateUtc, today)))
+                x.TotalAmount - x.PaidAmount - x.ReturnAmount,
+                0))
             .ToListAsync(cancellationToken);
+
+        return items
+            .Select(x => x with { DaysOverdue = (today - x.DueDateUtc.Date).Days })
+            .ToList();
     }
 
     public async Task<ReportFileResult> ExportSalesSummaryExcelAsync(ReportFilterRequest request, CancellationToken cancellationToken)

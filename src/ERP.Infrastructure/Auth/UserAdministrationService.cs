@@ -71,7 +71,7 @@ public sealed class UserAdministrationService : IUserAdministrationService
                 .Where(x => x.UserId == user.Id && !x.IsDeleted)
                 .Select(x => x.BranchId)
                 .ToListAsync(cancellationToken);
-            items.Add(new UserListItemDto(user.Id, user.UserName ?? string.Empty, user.Email, user.IsActive, roles, branches));
+            items.Add(new UserListItemDto(user.Id, user.UserName ?? string.Empty, user.Email, user.IsActive, roles.ToArray(), branches));
         }
 
         return new PagedResult<UserListItemDto>
@@ -95,7 +95,7 @@ public sealed class UserAdministrationService : IUserAdministrationService
             .Select(x => x.BranchId)
             .ToListAsync(cancellationToken);
 
-        return new UserDetailDto(user.Id, user.UserName ?? string.Empty, user.Email, user.IsActive, roles, branches, user.DefaultBranchId);
+        return new UserDetailDto(user.Id, user.UserName ?? string.Empty, user.Email, user.IsActive, roles.ToArray(), branches, user.DefaultBranchId);
     }
 
     public async Task<Guid> CreateUserAsync(SaveUserRequest request, CancellationToken cancellationToken)

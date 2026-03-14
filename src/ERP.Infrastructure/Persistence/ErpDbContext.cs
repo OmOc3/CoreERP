@@ -414,7 +414,7 @@ public sealed class ErpDbContext
         });
     }
 
-    private static void ConfigureAuditableEntity<TEntity>(Microsoft.EntityFrameworkCore.Metadata.Builders.EntityTypeBuilder<TEntity> entity)
+    private void ConfigureAuditableEntity<TEntity>(Microsoft.EntityFrameworkCore.Metadata.Builders.EntityTypeBuilder<TEntity> entity)
         where TEntity : ERP.Domain.Common.BaseEntity
     {
         entity.HasKey(x => x.Id);
@@ -423,6 +423,17 @@ public sealed class ErpDbContext
         entity.Property(x => x.UpdatedAtUtc);
         entity.Property(x => x.UpdatedBy).HasMaxLength(128);
         entity.Property(x => x.IsDeleted).HasDefaultValue(false);
-        entity.Property(x => x.RowVersion).IsRowVersion();
+        var rowVersion = entity.Property(x => x.RowVersion);
+        if (Database.IsSqlite())
+        {
+            rowVersion
+                .IsConcurrencyToken()
+                .ValueGeneratedOnAdd()
+                .HasDefaultValueSql("randomblob(8)");
+        }
+        else
+        {
+            rowVersion.IsRowVersion();
+        }
     }
 }

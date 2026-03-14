@@ -2,6 +2,7 @@ using ERP.Domain.Common;
 using ERP.Domain.Entities;
 using ERP.Domain.Enums;
 using FluentAssertions;
+using Xunit;
 
 namespace ERP.UnitTests;
 

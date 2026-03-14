@@ -117,10 +117,11 @@ public sealed class ApprovalService : IApprovalService
     {
         _currentUserService.EnsureAuthenticated();
 
-        var rules = await _dbContext.ApprovalRules
+        var rules = (await _dbContext.ApprovalRules
             .Where(x => !x.IsDeleted)
+            .ToListAsync(cancellationToken))
             .OrderBy(x => x.MinimumAmount)
-            .ToListAsync(cancellationToken);
+            .ToList();
 
         var matchedRules = rules
             .Where(x => x.Matches(branchId, documentType, amount))
@@ -245,6 +246,39 @@ public sealed class ApprovalService : IApprovalService
         {
             var search = request.Search.Trim().ToLowerInvariant();
             query = query.Where(x => x.Name.ToLower().Contains(search));
+        }
+
+        if (string.Equals(_dbContext.Database.ProviderName, "Microsoft.EntityFrameworkCore.Sqlite", StringComparison.Ordinal))
+        {
+            var items = await query
+                .Select(x => new ApprovalRuleDto(
+                    x.Id,
+                    x.Name,
+                    x.DocumentType,
+                    x.BranchId,
+                    x.Branch != null ? x.Branch.Name : null,
+                    x.MinimumAmount,
+                    x.MaximumAmount,
+                    x.ApproverRoleName,
+                    x.ApproverUserId,
+                    x.IsActive))
+                .ToListAsync(cancellationToken);
+
+            var orderedItems = items
+                .OrderBy(x => x.DocumentType)
+                .ThenBy(x => x.MinimumAmount)
+                .ToList();
+
+            return new PagedResult<ApprovalRuleDto>
+            {
+                Items = orderedItems
+                    .Skip((request.NormalizedPageNumber - 1) * request.NormalizedPageSize)
+                    .Take(request.NormalizedPageSize)
+                    .ToList(),
+                PageNumber = request.NormalizedPageNumber,
+                PageSize = request.NormalizedPageSize,
+                TotalCount = orderedItems.Count
+            };
         }
 
         query = query.OrderBy(x => x.DocumentType).ThenBy(x => x.MinimumAmount);

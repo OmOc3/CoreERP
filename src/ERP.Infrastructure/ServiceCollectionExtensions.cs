@@ -28,8 +28,19 @@ public static class ServiceCollectionExtensions
 
         var connectionString = configuration.GetConnectionString("DefaultConnection")
             ?? throw new InvalidOperationException("DefaultConnection connection string is missing.");
+        var databaseProvider = configuration["ERP:DatabaseProvider"]?.Trim().ToLowerInvariant() ?? "sqlserver";
+        var hangfireEnabled = configuration.GetValue("ERP:Hangfire:Enabled", true);
 
-        services.AddDbContext<ErpDbContext>(options => options.UseSqlServer(connectionString));
+        services.AddDbContext<ErpDbContext>(options =>
+        {
+            if (databaseProvider == "sqlite")
+            {
+                options.UseSqlite(connectionString);
+                return;
+            }
+
+            options.UseSqlServer(connectionString);
+        });
         services.AddScoped<IErpDbContext>(provider => provider.GetRequiredService<ErpDbContext>());
 
         services.AddIdentity<ApplicationUser, ApplicationRole>(options =>
@@ -46,7 +57,12 @@ public static class ServiceCollectionExtensions
 
         var jwtOptions = configuration.GetSection("ERP:Jwt").Get<ErpOptions.JwtOptions>() ?? new ErpOptions.JwtOptions();
         var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtOptions.Key));
-        services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+        services.AddAuthentication(options =>
+            {
+                options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
+                options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
+                options.DefaultScheme = JwtBearerDefaults.AuthenticationScheme;
+            })
             .AddJwtBearer(options =>
             {
                 options.TokenValidationParameters = new TokenValidationParameters
@@ -61,15 +77,23 @@ public static class ServiceCollectionExtensions
                 };
             });
 
-        services.AddHangfire(configuration =>
-            configuration.SetDataCompatibilityLevel(CompatibilityLevel.Version_180)
-                .UseSimpleAssemblyNameTypeSerializer()
-                .UseRecommendedSerializerSettings()
-                .UseSqlServerStorage(connectionString, new SqlServerStorageOptions
-                {
-                    PrepareSchemaIfNecessary = true
-                }));
-        services.AddHangfireServer();
+        if (hangfireEnabled)
+        {
+            if (databaseProvider != "sqlserver")
+            {
+                throw new InvalidOperationException("Hangfire is only supported with the SQL Server database provider.");
+            }
+
+            services.AddHangfire(configuration =>
+                configuration.SetDataCompatibilityLevel(CompatibilityLevel.Version_180)
+                    .UseSimpleAssemblyNameTypeSerializer()
+                    .UseRecommendedSerializerSettings()
+                    .UseSqlServerStorage(connectionString, new SqlServerStorageOptions
+                    {
+                        PrepareSchemaIfNecessary = true
+                    }));
+            services.AddHangfireServer();
+        }
 
         services.AddScoped<IClock, SystemClock>();
         services.AddScoped<ICurrentUserService, CurrentUserService>();

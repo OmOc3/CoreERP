@@ -9,28 +9,28 @@ CoreERP is a modular monolith mini ERP for small and medium businesses built wit
 - Jobs: Hangfire
 - Logging: Serilog
 
-## Current Repository Audit
+## Current Verification Status
 
-Completed modules:
+Backend stabilization completed in-repo:
+
+- API startup is now provider-aware: SQL Server remains the default runtime database, while SQLite is supported for integration testing
+- A committed SQL Server baseline migration was added under `src/ERP.Infrastructure/Persistence/Migrations`
+- A design-time `ErpDbContextFactory` was added so `dotnet ef` can target the current model consistently
+- Hangfire and HTTPS redirection are now configuration-driven, which keeps Docker/local HTTP flows working and allows backend integration tests to run without SQL Server-specific job storage
+- Integration tests now cover login, product creation, purchase order submit/approve/receive, sales order submit/approve, sales invoice posting, stock deduction, low stock alert generation, and frontend-facing API smoke endpoints
+
+What was already in place and preserved:
 
 - Domain model for branches, products, customers, suppliers, purchase orders, sales orders, invoices, payments, returns, inventory, approvals, alerts, and audit logs
 - Application services for master data, transactions, approvals, dashboard, reports, alerts, and audit log queries
 - API controllers for auth, admin, master data, purchasing, sales, inventory, reports, dashboard, alerts, and audit logs
 - Frontend shell, auth flow, dashboard, master data, transaction pages, reports, users, roles/workflow, alerts, and audit log pages
-- Demo seed strategy and startup migration-or-create bootstrap path
+- Demo seed strategy and startup bootstrap path
 
-Partially completed modules:
+Environment limitation in this workspace:
 
-- Automated tests: project files exist, but only limited coverage is currently present in-repo
-- Database migrations: the API can fall back to `EnsureCreated`, but committed EF Core migration files are still missing
-- Docker verification for the backend was not executable in this workspace because the .NET SDK is not installed locally here
-
-Broken items repaired in this recovery pass:
-
-- Added API runtime configuration files and CORS policy so the Angular app can call the API cross-origin
-- Recovered the Angular app from a broken route tree by implementing all referenced standalone pages and the shared shell/auth infrastructure
-- Fixed frontend dependency integrity issues enough to complete a production build locally with `npm run build`
-- Added containerization assets for SQL Server, API, and frontend
+- The .NET 8 SDK is not installed in this session, so `dotnet build`, `dotnet test`, `dotnet ef`, and live API execution could not be run here
+- Docker is also unavailable in this session, so Docker Compose could only be prepared, not executed
 
 ## Solution Structure
 
@@ -71,53 +71,96 @@ Then open:
 - API Swagger: http://localhost:8080/swagger
 - Hangfire: http://localhost:8080/hangfire
 
-### Option 2: Run the frontend locally
+### Option 2: Run SQL Server + API + frontend locally
 
-Frontend commands:
+Requirements:
+
+- .NET 8 SDK
+- SQL Server 2022, SQL Server Express, or LocalDB
+- Node.js 20+
+
+SQL Server connection defaults:
+
+- Docker/standard SQL Server: `src/ERP.Api/appsettings.json`
+- LocalDB development: `src/ERP.Api/appsettings.Development.json`
+
+Restore and build:
+
+```bash
+dotnet restore ERP.sln
+dotnet build ERP.sln
+```
+
+Apply EF Core migrations:
+
+```bash
+dotnet tool restore
+dotnet tool run dotnet-ef database update --project src/ERP.Infrastructure --startup-project src/ERP.Api
+```
+
+Run the API:
+
+```bash
+dotnet run --project src/ERP.Api
+```
+
+Run the Angular frontend in a second terminal:
 
 ```bash
 cd src/erp-web
 npm install
+npm start
 npm run build
 ```
 
 The frontend loads its API base URL from `src/erp-web/src/assets/app-config.json`.
 
-### Option 3: Run the API locally
+### Option 3: Run tests locally
 
-Requirements:
-
-- .NET 8 SDK
-- SQL Server or LocalDB
-
-API commands:
+Unit tests:
 
 ```bash
-dotnet restore
-dotnet run --project src/ERP.Api
+dotnet test tests/ERP.UnitTests/ERP.UnitTests.csproj
 ```
 
-Local development settings live in `src/ERP.Api/appsettings.Development.json`.
+Integration tests:
+
+```bash
+dotnet test tests/ERP.IntegrationTests/ERP.IntegrationTests.csproj
+```
+
+The integration suite uses a SQLite in-memory database, disables Hangfire, seeds the real application data, and exercises the API through `WebApplicationFactory`.
+
+### Option 4: Create future migrations
+
+If the domain model changes after this baseline:
+
+```bash
+dotnet tool restore
+dotnet tool run dotnet-ef migrations add <MigrationName> --project src/ERP.Infrastructure --startup-project src/ERP.Api --output-dir Persistence/Migrations
+```
 
 ## Seeded Accounts
 
-- `admin / Admin@123`
-- `manager / Manager@123`
-- `branch.user / Branch@123`
+- `admin / Admin123!`
+- `manager / Manager123!`
+- `branchuser / Branch123!`
 
 ## Verified In This Workspace
 
 - `npm.cmd install` in `src/erp-web`
 - `npm.cmd run build` in `src/erp-web`
+- Frontend route-to-endpoint alignment was checked against the current API controllers
+- Backend runtime, migration, and integration-test files were prepared for immediate execution in a proper .NET 8 environment
 
 ## Not Yet Verifiable Here
 
-- `dotnet build`, `dotnet test`, and API runtime verification could not be executed in this workspace because the .NET SDK is not installed on this machine session
-- EF Core migration generation was not possible for the same reason
+- `dotnet build`, `dotnet test`, `dotnet ef database update`, and API runtime verification could not be executed in this workspace because the .NET SDK is not installed in this machine session
+- `docker compose up --build` could not be executed here because Docker is not installed in this machine session
 
 ## Tradeoffs And Next Improvements
 
+- The committed baseline migration is hand-authored because `dotnet ef migrations add` could not be executed without the SDK in this session; once the SDK is available, running the migration commands above is the final validation step
 - Frontend forms are functional and connected to live endpoints, but they are intentionally streamlined compared to a fully polished enterprise workflow studio
-- Approval actions are available from the dashboard; a dedicated approval inbox page would make high-volume operations easier
-- The API currently relies on ensure-created fallback when migrations are absent; committed SQL Server migrations should be generated next
-- Test coverage should be expanded around login, order approval, invoice posting, stock reduction, low stock jobs, and return flows once the .NET SDK is available
+- Approval actions are available from the dashboard and admin workflow screens; a dedicated approval inbox page would still improve high-volume operations
+- Once a .NET 8 environment is available, the next recommended pass is to run the full build/test pipeline and, if desired, add a generated model snapshot beside the committed baseline migration

@@ -142,7 +142,7 @@ public sealed class AuthService : IAuthService
             user.Id,
             user.UserName ?? string.Empty,
             user.Email,
-            roles,
+            roles.ToArray(),
             permissions,
             branchAccess.Select(x => x.BranchId).ToList(),
             user.DefaultBranchId ?? branchAccess.FirstOrDefault(x => x.IsDefault)?.BranchId,

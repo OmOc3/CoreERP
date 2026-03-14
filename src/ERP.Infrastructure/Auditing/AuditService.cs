@@ -1,4 +1,5 @@
 using System.Text.Json;
+using System.Text.Json.Serialization;
 using ERP.Application.Common.Contracts;
 using ERP.Domain.Entities;
 
@@ -6,6 +7,11 @@ namespace ERP.Infrastructure.Auditing;
 
 public sealed class AuditService : IAuditService
 {
+    private static readonly JsonSerializerOptions AuditSerializerOptions = new()
+    {
+        ReferenceHandler = ReferenceHandler.IgnoreCycles
+    };
+
     private readonly IErpDbContext _dbContext;
     private readonly ICurrentUserService _currentUserService;
     private readonly IClock _clock;
@@ -31,8 +37,8 @@ public sealed class AuditService : IAuditService
             EntityName = entityName,
             EntityId = entityId,
             Action = action,
-            BeforeData = before == null ? null : JsonSerializer.Serialize(before),
-            AfterData = after == null ? null : JsonSerializer.Serialize(after),
+            BeforeData = before == null ? null : JsonSerializer.Serialize(before, AuditSerializerOptions),
+            AfterData = after == null ? null : JsonSerializer.Serialize(after, AuditSerializerOptions),
             PerformedByUserId = _currentUserService.User.UserId,
             UserName = _currentUserService.User.UserName,
             BranchId = branchId,

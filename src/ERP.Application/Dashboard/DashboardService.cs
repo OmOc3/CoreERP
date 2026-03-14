@@ -62,6 +62,38 @@ public sealed class DashboardService : IDashboardService
         var stockBalances = ApplyBranchScope(_dbContext.StockBalances.AsNoTracking().Include(x => x.Product).Where(x => !x.IsDeleted), branchId);
         var approvals = ApplyApprovalBranchScope(_dbContext.ApprovalRequests.AsNoTracking().Where(x => !x.IsDeleted), branchId);
         var alerts = ApplyBranchScope(_dbContext.Alerts.AsNoTracking().Where(x => !x.IsDeleted && x.IsActive && x.Type == AlertType.LowStock), branchId);
+        var topProductsQuery = _dbContext.SalesInvoiceLines
+            .AsNoTracking()
+            .Include(x => x.Product)
+            .Include(x => x.SalesInvoice)
+            .Where(x => !x.IsDeleted && x.SalesInvoice!.InvoiceDateUtc >= from && x.SalesInvoice.InvoiceDateUtc <= to);
+        if (branchId.HasValue)
+        {
+            topProductsQuery = topProductsQuery.Where(x => x.SalesInvoice!.BranchId == branchId.Value);
+        }
+        else if (!_currentUserService.User.IsAdministrator && _currentUserService.User.BranchIds.Count > 0)
+        {
+            var branchIds = _currentUserService.User.BranchIds;
+            topProductsQuery = topProductsQuery.Where(x => branchIds.Contains(x.SalesInvoice!.BranchId));
+        }
+
+        var topCustomersQuery = ApplyBranchScope(_dbContext.SalesInvoices.AsNoTracking().Include(x => x.Customer), branchId)
+            .Where(x => !x.IsDeleted && x.InvoiceDateUtc >= from && x.InvoiceDateUtc <= to);
+
+        if (string.Equals(_dbContext.Database.ProviderName, "Microsoft.EntityFrameworkCore.Sqlite", StringComparison.Ordinal))
+        {
+            return await BuildSqliteDashboardAsync(
+                from,
+                to,
+                salesInvoices,
+                purchaseInvoices,
+                stockBalances,
+                approvals,
+                alerts,
+                topProductsQuery,
+                topCustomersQuery,
+                cancellationToken);
+        }
 
         var totalSales = await salesInvoices.SumAsync(x => (decimal?)x.TotalAmount, cancellationToken) ?? 0m;
         var totalPurchases = await purchaseInvoices.SumAsync(x => (decimal?)x.TotalAmount, cancellationToken) ?? 0m;
@@ -91,21 +123,6 @@ public sealed class DashboardService : IDashboardService
                 purchaseMap.TryGetValue(date, out var purchases) ? purchases : 0m))
             .ToList();
 
-        var topProductsQuery = _dbContext.SalesInvoiceLines
-            .AsNoTracking()
-            .Include(x => x.Product)
-            .Include(x => x.SalesInvoice)
-            .Where(x => !x.IsDeleted && x.SalesInvoice!.InvoiceDateUtc >= from && x.SalesInvoice.InvoiceDateUtc <= to);
-        if (branchId.HasValue)
-        {
-            topProductsQuery = topProductsQuery.Where(x => x.SalesInvoice!.BranchId == branchId.Value);
-        }
-        else if (!_currentUserService.User.IsAdministrator && _currentUserService.User.BranchIds.Count > 0)
-        {
-            var branchIds = _currentUserService.User.BranchIds;
-            topProductsQuery = topProductsQuery.Where(x => branchIds.Contains(x.SalesInvoice!.BranchId));
-        }
-
         var topProducts = await topProductsQuery
             .GroupBy(x => new { x.ProductId, x.Product!.Name })
             .Select(x => new DashboardItemDto(x.Key.Name, x.Sum(y => y.Quantity)))
@@ -113,8 +130,7 @@ public sealed class DashboardService : IDashboardService
             .Take(5)
             .ToListAsync(cancellationToken);
 
-        var topCustomers = await ApplyBranchScope(_dbContext.SalesInvoices.AsNoTracking().Include(x => x.Customer), branchId)
-            .Where(x => !x.IsDeleted && x.InvoiceDateUtc >= from && x.InvoiceDateUtc <= to)
+        var topCustomers = await topCustomersQuery
             .GroupBy(x => new { x.CustomerId, x.Customer!.Name })
             .Select(x => new DashboardItemDto(x.Key.Name, x.Sum(y => y.TotalAmount)))
             .OrderByDescending(x => x.Value)
@@ -132,6 +148,86 @@ public sealed class DashboardService : IDashboardService
             new("totalSales", "Total Sales", totalSales),
             new("totalPurchases", "Total Purchases", totalPurchases),
             new("netRevenue", "Net Revenue", netRevenue),
+            new("stockValue", "Stock Value", stockValue)
+        ],
+            trendPoints,
+            topProducts,
+            topCustomers,
+            lowStockAlerts,
+            pendingApprovals,
+            lowStockCount,
+            paidInvoices,
+            openInvoices);
+    }
+
+    private static async Task<DashboardDto> BuildSqliteDashboardAsync(
+        DateTime from,
+        DateTime to,
+        IQueryable<SalesInvoice> salesInvoices,
+        IQueryable<PurchaseInvoice> purchaseInvoices,
+        IQueryable<StockBalance> stockBalances,
+        IQueryable<ApprovalRequest> approvals,
+        IQueryable<Alert> alerts,
+        IQueryable<SalesInvoiceLine> topProductsQuery,
+        IQueryable<SalesInvoice> topCustomersQuery,
+        CancellationToken cancellationToken)
+    {
+        var salesInvoiceList = await salesInvoices.ToListAsync(cancellationToken);
+        var purchaseInvoiceList = await purchaseInvoices.ToListAsync(cancellationToken);
+        var stockBalanceList = await stockBalances.ToListAsync(cancellationToken);
+        var approvalList = await approvals.ToListAsync(cancellationToken);
+        var alertList = await alerts
+            .OrderByDescending(x => x.TriggeredAtUtc)
+            .Take(10)
+            .ToListAsync(cancellationToken);
+        var topProductLines = await topProductsQuery.ToListAsync(cancellationToken);
+        var topCustomerInvoices = await topCustomersQuery.ToListAsync(cancellationToken);
+
+        var totalSales = salesInvoiceList.Sum(x => x.TotalAmount);
+        var totalPurchases = purchaseInvoiceList.Sum(x => x.TotalAmount);
+        var stockValue = stockBalanceList.Sum(x => x.StockValue);
+        var pendingApprovals = approvalList.Count(x => x.Status == ApprovalStatus.Pending);
+        var lowStockCount = stockBalanceList.Count(x => x.QuantityOnHand <= x.Product!.ReorderLevel);
+        var paidInvoices = salesInvoiceList.Sum(x => x.PaidAmount);
+        var openInvoices = salesInvoiceList.Sum(x => x.OutstandingAmount);
+
+        var salesTrendMap = salesInvoiceList
+            .GroupBy(x => x.InvoiceDateUtc.Date)
+            .ToDictionary(x => x.Key, x => x.Sum(y => y.TotalAmount));
+        var purchaseTrendMap = purchaseInvoiceList
+            .GroupBy(x => x.InvoiceDateUtc.Date)
+            .ToDictionary(x => x.Key, x => x.Sum(y => y.TotalAmount));
+        var trendPoints = Enumerable.Range(0, (to.Date - from.Date).Days + 1)
+            .Select(offset => from.Date.AddDays(offset))
+            .Select(date => new TrendPointDto(
+                date,
+                salesTrendMap.TryGetValue(date, out var sales) ? sales : 0m,
+                purchaseTrendMap.TryGetValue(date, out var purchases) ? purchases : 0m))
+            .ToList();
+
+        var topProducts = topProductLines
+            .GroupBy(x => new { x.ProductId, x.Product!.Name })
+            .Select(x => new DashboardItemDto(x.Key.Name, x.Sum(y => y.Quantity)))
+            .OrderByDescending(x => x.Value)
+            .Take(5)
+            .ToList();
+
+        var topCustomers = topCustomerInvoices
+            .GroupBy(x => new { x.CustomerId, x.Customer!.Name })
+            .Select(x => new DashboardItemDto(x.Key.Name, x.Sum(y => y.TotalAmount)))
+            .OrderByDescending(x => x.Value)
+            .Take(5)
+            .ToList();
+
+        var lowStockAlerts = alertList
+            .Select(x => new DashboardAlertDto(x.Id, x.Title, x.Message, x.TriggeredAtUtc, x.IsRead))
+            .ToList();
+
+        return new DashboardDto(
+        [
+            new("totalSales", "Total Sales", totalSales),
+            new("totalPurchases", "Total Purchases", totalPurchases),
+            new("netRevenue", "Net Revenue", totalSales - totalPurchases),
             new("stockValue", "Stock Value", stockValue)
         ],
             trendPoints,

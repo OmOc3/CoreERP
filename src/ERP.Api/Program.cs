@@ -12,6 +12,9 @@ using Serilog;
 
 var builder = WebApplication.CreateBuilder(args);
 var corsOrigins = builder.Configuration.GetSection("ERP:Cors:AllowedOrigins").Get<string[]>() ?? [];
+var useHttpsRedirection = builder.Configuration.GetValue("ERP:UseHttpsRedirection", false);
+var hangfireEnabled = builder.Configuration.GetValue("ERP:Hangfire:Enabled", true);
+var applyMigrations = builder.Configuration.GetValue("ERP:Database:ApplyMigrations", true);
 
 builder.Host.UseSerilog((context, services, configuration) =>
     configuration
@@ -106,14 +109,20 @@ app.UseSerilogRequestLogging();
 app.UseMiddleware<ProblemDetailsMiddleware>();
 app.UseSwagger();
 app.UseSwaggerUI();
-app.UseHttpsRedirection();
+if (useHttpsRedirection)
+{
+    app.UseHttpsRedirection();
+}
 app.UseCors("ClientApp");
 app.UseAuthentication();
 app.UseAuthorization();
-app.UseHangfireDashboard("/hangfire", new DashboardOptions
+if (hangfireEnabled)
 {
-    Authorization = new IDashboardAuthorizationFilter[] { new HangfireDashboardAuthorizationFilter() }
-});
+    app.UseHangfireDashboard("/hangfire", new DashboardOptions
+    {
+        Authorization = new IDashboardAuthorizationFilter[] { new HangfireDashboardAuthorizationFilter() }
+    });
+}
 app.MapGet("/health", () => Results.Ok(new { status = "ok" }))
     .AllowAnonymous();
 app.MapControllers();
@@ -121,8 +130,8 @@ app.MapControllers();
 using (var scope = app.Services.CreateScope())
 {
     var dbContext = scope.ServiceProvider.GetRequiredService<ErpDbContext>();
-    var migrations = await dbContext.Database.GetMigrationsAsync();
-    if (migrations.Any())
+    var hasMigrations = dbContext.Database.GetMigrations().Any();
+    if (applyMigrations && dbContext.Database.IsSqlServer() && hasMigrations)
     {
         await dbContext.Database.MigrateAsync();
     }
@@ -134,10 +143,13 @@ using (var scope = app.Services.CreateScope())
     var seeder = scope.ServiceProvider.GetRequiredService<DemoDataSeeder>();
     await seeder.SeedAsync();
 
-    RecurringJob.AddOrUpdate<ILowStockAlertService>(
-        "low-stock-alerts",
-        service => service.GenerateAsync(CancellationToken.None),
-        Cron.Hourly);
+    if (hangfireEnabled)
+    {
+        RecurringJob.AddOrUpdate<ILowStockAlertService>(
+            "low-stock-alerts",
+            service => service.GenerateAsync(CancellationToken.None),
+            Cron.Hourly);
+    }
 }
 
 app.Run();
